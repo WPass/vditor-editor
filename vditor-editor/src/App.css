@@ -475,3 +475,40 @@
   height: 100vh !important;
   z-index: 9999 !important;
 }
+
+/* =====================
+   Vditor 全局Tooltip (position:fixed避免被裁剪)
+   ===================== */
+.vditor-global-tooltip {
+  position: fixed;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 4px;
+  z-index: 99999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+/* 箭头 */
+.vditor-global-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -6px;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: rgba(0, 0, 0, 0.9);
+}
+
+/* 暗色主题 */
+[data-theme="dark"] .vditor-global-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+}
+
+[data-theme="dark"] .vditor-global-tooltip::before {
+  border-right-color: rgba(255, 255, 255, 0.95);
+}

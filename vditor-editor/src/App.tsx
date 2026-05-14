@@ -35,7 +35,21 @@ const vditorToolbarFixCSS = `
   flex-wrap: wrap !important;
   align-items: center !important;
 }
+
+/* 禁用原生tooltip，避免被裁剪 */
+.vditor-toolbar .vditor-tooltipped::before,
+.vditor-toolbar .vditor-tooltipped::after {
+  display: none !important;
+}
 `;
+
+// 全局Tooltip状态接口
+interface GlobalTooltip {
+  visible: boolean;
+  text: string;
+  x: number;
+  y: number;
+}
 
 // 用户设置接口
 interface UserSettings {
@@ -105,6 +119,12 @@ function App() {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const [globalTooltip, setGlobalTooltip] = useState<GlobalTooltip>({
+    visible: false,
+    text: '',
+    x: 0,
+    y: 0
+  });
   const editorRef = useRef<EditorHandle>(null);
 
   // 应用主题到DOM
@@ -137,6 +157,48 @@ function App() {
     };
     initSettings();
   }, []);
+
+  // 全局Tooltip监听器 - 监听Vditor工具栏按钮hover
+  useEffect(() => {
+    // 等待Vditor初始化
+    const timeoutId = setTimeout(() => {
+      const toolbar = document.querySelector('.vditor-toolbar');
+      if (!toolbar) return;
+
+      const handleMouseOver = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        // 查找带有aria-label的按钮元素
+        const button = target.closest('.vditor-toolbar__button') as HTMLElement;
+        if (button && button.getAttribute('aria-label')) {
+          const rect = button.getBoundingClientRect();
+          setGlobalTooltip({
+            visible: true,
+            text: button.getAttribute('aria-label') || '',
+            x: rect.right + 12,
+            y: rect.top + rect.height / 2
+          });
+        }
+      };
+
+      const handleMouseOut = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const button = target.closest('.vditor-toolbar__button');
+        if (button) {
+          setGlobalTooltip(prev => ({ ...prev, visible: false }));
+        }
+      };
+
+      toolbar.addEventListener('mouseover', handleMouseOver);
+      toolbar.addEventListener('mouseout', handleMouseOut);
+
+      return () => {
+        toolbar.removeEventListener('mouseover', handleMouseOver);
+        toolbar.removeEventListener('mouseout', handleMouseOut);
+      };
+    }, 500); // 延迟等待Vditor初始化
+
+    return () => clearTimeout(timeoutId);
+  }, [settingsLoaded]);
 
   // 监听命令行文件参数（文件关联打开）
   useEffect(() => {
@@ -684,6 +746,19 @@ ${htmlContent}
         settings={settings}
         onSave={handleSettingsSave}
       />
+      {/* 全局Tooltip - position:fixed避免被overflow裁剪 */}
+      {globalTooltip.visible && (
+        <div
+          className="vditor-global-tooltip"
+          style={{
+            left: globalTooltip.x,
+            top: globalTooltip.y,
+            transform: 'translateY(-50%)'
+          }}
+        >
+          {globalTooltip.text}
+        </div>
+      )}
     </div>
   );
 }
