@@ -106,26 +106,30 @@ export default function Toolbar({
 
   return (
     <div className="toolbar">
-      <div className="toolbar-group">
+      <div className="toolbar-group toolbar-group-start">
         <button className="toolbar-btn" onClick={handleNew} title="新建 (Ctrl+N)">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
           </svg>
+          <span className="toolbar-tooltip">新建 (Ctrl+N)</span>
         </button>
         <button className="toolbar-btn" onClick={handleOpen} title="打开 (Ctrl+O)">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
           </svg>
+          <span className="toolbar-tooltip">打开 (Ctrl+O)</span>
         </button>
         <button className="toolbar-btn" onClick={handleSave} title="保存 (Ctrl+S)">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h11.17L19 7.83V19zm-7-7c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM6 6h9v4H6z"/>
           </svg>
+          <span className="toolbar-tooltip">保存 (Ctrl+S)</span>
         </button>
         <button className="toolbar-btn" onClick={handleSaveAs} title="另存为 (Ctrl+Shift+S)">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h11.17L19 7.83V19zm-7-7c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm3-3H6V6h9v4H6z"/>
           </svg>
+          <span className="toolbar-tooltip">另存为 (Ctrl+Shift+S)</span>
         </button>
       </div>
 
@@ -136,11 +140,13 @@ export default function Toolbar({
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
           </svg>
+          <span className="toolbar-tooltip">导出 HTML</span>
         </button>
         <button className="toolbar-btn" onClick={handleExportPDF} title="导出 PDF">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="currentColor" d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/>
           </svg>
+          <span className="toolbar-tooltip">导出 PDF</span>
         </button>
       </div>
 
@@ -157,6 +163,7 @@ export default function Toolbar({
               <path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
             </svg>
           )}
+          <span className="toolbar-tooltip">{theme === 'light' ? '切换深色模式' : '切换浅色模式'}</span>
         </button>
       </div>
     </div>

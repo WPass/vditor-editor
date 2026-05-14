@@ -148,6 +148,11 @@
   gap: 2px;
 }
 
+/* 第一个按钮组添加左边距，防止tooltip被窗口边缘裁剪 */
+.toolbar-group-start {
+  margin-left: 4px;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 24px;
@@ -185,6 +190,58 @@
 .toolbar-btn svg {
   width: 18px;
   height: 18px;
+}
+
+/* =====================
+   自定义工具栏 Tooltip
+   ===================== */
+.toolbar-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 4px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* tooltip 箭头 */
+.toolbar-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.toolbar-btn {
+  position: relative;
+}
+
+.toolbar-btn:hover .toolbar-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 暗色主题 tooltip */
+[data-theme="dark"] .toolbar-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+}
+
+[data-theme="dark"] .toolbar-tooltip::after {
+  border-top-color: rgba(255, 255, 255, 0.95);
 }
 
 /* =====================
