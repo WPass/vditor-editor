@@ -1,0 +1,429 @@
+/* =====================
+   全局样式
+   ===================== */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e8e8e8;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #e0e0e0;
+  --accent-color: #1890ff;
+  --hover-bg: #f0f0f0;
+  --active-bg: #e0e0e0;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #333333;
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --border-color: #404040;
+  --accent-color: #4a9eff;
+  --hover-bg: #2a2a2a;
+  --active-bg: #383838;
+}
+
+/* =====================
+   App 容器
+   ===================== */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* =====================
+   拖拽文件提示
+   ===================== */
+.app.drag-over::before {
+  content: '松开以打开文件';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 40px 60px;
+  background: rgba(24, 144, 255, 0.95);
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+  border-radius: 12px;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(24, 144, 255, 0.4);
+}
+
+/* =====================
+   标题栏
+   ===================== */
+.titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.titlebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.titlebar-separator {
+  color: var(--border-color);
+}
+
+.titlebar-filename {
+  color: var(--text-primary);
+}
+
+.titlebar-modified {
+  color: var(--accent-color);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.titlebar-icon {
+  font-size: 14px;
+}
+
+.titlebar-buttons {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.titlebar-btn:hover {
+  background: var(--hover-bg);
+}
+
+.titlebar-btn.close:hover {
+  background: #e81123;
+  color: white;
+}
+
+.titlebar-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* =====================
+   工具栏
+   ===================== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 8px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 8px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toolbar-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.toolbar-btn:active {
+  background: var(--active-bg);
+}
+
+.toolbar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* =====================
+   主内容区
+   ===================== */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* =====================
+   编辑器容器
+   ===================== */
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+#vditor {
+  height: 100%;
+}
+
+.vditor {
+  border: none !important;
+}
+
+/* =====================
+   Vditor 工具栏强制左对齐 - 使用浮动布局
+   ===================== */
+.vditor-toolbar {
+  border-bottom: 1px solid var(--border-color) !important;
+  background: var(--bg-secondary) !important;
+  display: block !important;
+  overflow: hidden !important;
+  padding: 4px 5px !important;
+  line-height: 1 !important;
+}
+
+.vditor-toolbar__item {
+  float: left !important;
+}
+
+/* 清除浮动 */
+.vditor-toolbar::after {
+  content: '' !important;
+  display: block !important;
+  clear: both !important;
+}
+
+/* 确保分隔符左对齐 */
+.vditor-toolbar__br {
+  float: left !important;
+  display: inline-block !important;
+}
+
+/* =====================
+   Vditor 工具栏工具提示样式 - 完整替换原生样式
+   ===================== */
+/* 隐藏原生tooltip的:before小三角 */
+.vditor-toolbar .vditor-tooltipped::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* 重写:after伪元素 */
+.vditor-toolbar .vditor-tooltipped::after {
+  display: none !important;
+  position: absolute !important;
+  z-index: 99999 !important;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  -webkit-font-smoothing: subpixel-antialiased !important;
+  color: #fff !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  text-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  word-wrap: normal !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  content: attr(aria-label) !important;
+  background: rgba(0, 0, 0, 0.95) !important;
+  border-radius: 6px !important;
+  line-height: 1.4 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  opacity: 1 !important;
+}
+
+/* 悬停时显示tooltip - 覆盖原生hover样式 */
+.vditor-toolbar .vditor-tooltipped:hover::after {
+  display: block !important;
+  animation: none !important;
+  /* 固定在按钮下方 */
+  top: calc(100% + 8px) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: auto !important;
+  margin: 0 !important;
+}
+
+@keyframes tooltip-appear {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.vditor-toolbar .vditor-tooltipped:hover::after {
+  animation: tooltip-appear 0.15s ease-out !important;
+}
+
+/* 确保工具栏不会被overflow裁剪tooltip */
+.vditor {
+  overflow: visible !important;
+}
+
+.vditor-toolbar {
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 100 !important;
+}
+
+.vditor-toolbar__br {
+  overflow: visible !important;
+}
+
+.vditor-content {
+  overflow: visible !important;
+}
+
+.vditor-content {
+  background: var(--bg-primary) !important;
+}
+
+.vditor-reset {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* =====================
+   状态栏
+   ===================== */
+.statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.statusbar-left,
+.statusbar-right {
+  display: flex;
+  gap: 16px;
+}
+
+.status-item {
+  cursor: default;
+}
+
+/* =====================
+   Vditor 深色主题覆盖
+   ===================== */
+[data-theme="dark"] .vditor {
+  background: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .vditor-toolbar {
+  background: var(--bg-secondary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .vditor-toolbar__button {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .vditor-toolbar__button:hover {
+  background: var(--hover-bg) !important;
+}
+
+[data-theme="dark"] .vditor-reset {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .vditor-reset pre {
+  background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .vditor-reset blockquote {
+  border-left-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* =====================
+   打印样式（PDF导出）
+   ===================== */
+@media print {
+  .titlebar,
+  .toolbar,
+  .statusbar,
+  .file-title {
+    display: none !important;
+  }
+
+  .app {
+    height: auto;
+  }
+
+  .main-content {
+    display: block;
+  }
+
+  .editor-container {
+    height: auto;
+  }
+}
+
+/* =====================
+   全屏模式
+   ===================== */
+.vditor--fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+}
