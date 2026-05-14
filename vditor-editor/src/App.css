@@ -141,15 +141,15 @@
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   gap: 4px;
-  /* 关键修复：允许tooltip溢出显示 */
-  overflow: visible;
-  position: relative;
-  z-index: 100;
+  /* 使用clip-path允许tooltip溢出 */
+  clip-path: none;
 }
 
+/* 确保toolbar-group也不会裁剪 */
 .toolbar-group {
   display: flex;
   gap: 2px;
+  overflow: visible;
 }
 
 /* 第一个按钮组添加左边距，防止tooltip被窗口边缘裁剪 */
@@ -180,7 +180,6 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
-  position: relative;
 }
 
 .toolbar-btn:hover {
@@ -198,58 +197,43 @@
 }
 
 /* =====================
-   自定义工具栏 Tooltip
+   全局工具栏 Tooltip (fixed定位，避免被裁剪)
    ===================== */
-.toolbar-tooltip {
-  position: absolute;
-  /* 显示在按钮右侧，避免被窗口边缘裁剪 */
-  left: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
+.toolbar-global-tooltip {
+  position: fixed;
   padding: 6px 10px;
   background: rgba(0, 0, 0, 0.9);
   color: #fff;
   font-size: 12px;
   white-space: nowrap;
   border-radius: 4px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-  pointer-events: none;
   z-index: 99999;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
-/* tooltip 箭头 - 指向左侧 */
-.toolbar-tooltip::before {
+/* 箭头 */
+.toolbar-global-tooltip::before {
   content: '';
   position: absolute;
   top: 50%;
-  right: 100%;
+  left: -6px;
   transform: translateY(-50%);
   border: 5px solid transparent;
   border-right-color: rgba(0, 0, 0, 0.9);
 }
 
-/* 移除之前的 ::after 箭头 */
-.toolbar-tooltip::after {
-  display: none;
-}
-
-.toolbar-btn:hover .toolbar-tooltip {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* 暗色主题 tooltip */
-[data-theme="dark"] .toolbar-tooltip {
+/* 暗色主题 */
+[data-theme="dark"] .toolbar-global-tooltip {
   background: rgba(255, 255, 255, 0.95);
   color: #333;
 }
 
-[data-theme="dark"] .toolbar-tooltip::before {
+[data-theme="dark"] .toolbar-global-tooltip::before {
   border-right-color: rgba(255, 255, 255, 0.95);
 }
+
+/* 移除旧的 .toolbar-tooltip 和 .toolbar-btn position:relative（已废弃） */
 
 /* =====================
    主内容区
