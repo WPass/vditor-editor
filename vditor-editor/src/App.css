@@ -180,6 +180,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s;
+  position: relative;
 }
 
 .toolbar-btn:hover {
@@ -233,10 +234,6 @@
 /* 移除之前的 ::after 箭头 */
 .toolbar-tooltip::after {
   display: none;
-}
-
-.toolbar-btn {
-  position: relative;
 }
 
 .toolbar-btn:hover .toolbar-tooltip {
