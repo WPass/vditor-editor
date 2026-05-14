@@ -141,6 +141,10 @@
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   gap: 4px;
+  /* 关键修复：允许tooltip溢出显示 */
+  overflow: visible;
+  position: relative;
+  z-index: 100;
 }
 
 .toolbar-group {
@@ -150,7 +154,7 @@
 
 /* 第一个按钮组添加左边距，防止tooltip被窗口边缘裁剪 */
 .toolbar-group-start {
-  margin-left: 4px;
+  margin-left: 12px;
 }
 
 .toolbar-divider {
@@ -197,9 +201,10 @@
    ===================== */
 .toolbar-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  /* 显示在按钮右侧，避免被窗口边缘裁剪 */
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
   padding: 6px 10px;
   background: rgba(0, 0, 0, 0.9);
   color: #fff;
@@ -210,19 +215,24 @@
   visibility: hidden;
   transition: opacity 0.15s ease, visibility 0.15s ease;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 99999;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* tooltip 箭头 */
-.toolbar-tooltip::after {
+/* tooltip 箭头 - 指向左侧 */
+.toolbar-tooltip::before {
   content: '';
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
   border: 5px solid transparent;
-  border-top-color: rgba(0, 0, 0, 0.9);
+  border-right-color: rgba(0, 0, 0, 0.9);
+}
+
+/* 移除之前的 ::after 箭头 */
+.toolbar-tooltip::after {
+  display: none;
 }
 
 .toolbar-btn {
@@ -240,8 +250,8 @@
   color: #333;
 }
 
-[data-theme="dark"] .toolbar-tooltip::after {
-  border-top-color: rgba(255, 255, 255, 0.95);
+[data-theme="dark"] .toolbar-tooltip::before {
+  border-right-color: rgba(255, 255, 255, 0.95);
 }
 
 /* =====================
