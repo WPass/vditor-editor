@@ -10,9 +10,16 @@
         padding: 0;
         box-sizing: border-box;
       }
-      html, body, #root {
+      /* html/body 保持 overflow:hidden 防止页面滚动条 */
+      html, body {
         height: 100%;
         overflow: hidden;
+      }
+      /* #root 必须 overflow:visible，否则 Vditor 工具栏子菜单(.vditor-panel)
+         向上展开时会被裁剪——子菜单需要溢出 #root 的子元素(.app → .main-content) 边界 */
+      #root {
+        height: 100%;
+        overflow: visible;
       }
     </style>
   </head>

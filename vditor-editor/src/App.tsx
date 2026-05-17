@@ -7,39 +7,43 @@ import { writeTextFile, readTextFile, exists, mkdir, BaseDirectory } from '@taur
 import { save, open } from '@tauri-apps/plugin-dialog';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { getPrinters } from 'tauri-plugin-printer-v2';
 import './App.css';
 
-// Vditor 工具栏强制左对齐样式
+// Vditor 工具栏修复样式（内联注入，覆盖 Vditor 自带样式）
 const vditorToolbarFixCSS = `
-/* Vditor工具栏强制左对齐 - 最高优先级 */
-.vditor .vditor-toolbar {
-  display: flex !important;
-  justify-content: flex-start !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  background: var(--bg-secondary) !important;
-}
-
+/* 工具栏 flex 左对齐，overflow visible 确保子菜单和 tooltip 不被裁剪 */
+.vditor .vditor-toolbar,
 .vditor-toolbar {
   display: flex !important;
   justify-content: flex-start !important;
   flex-wrap: wrap !important;
   align-items: center !important;
+  overflow: visible !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  background: var(--bg-secondary) !important;
+  position: relative !important;
+  z-index: 100 !important;
 }
 
-.vditor-toolbar__inner {
-  display: flex !important;
-  justify-content: flex-start !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
+/* vditor 容器不裁剪工具栏子菜单 */
+.vditor {
+  overflow: visible !important;
 }
 
-/* 禁用原生tooltip，避免被裁剪 */
+/* 编辑器内容区保持可滚动 */
+.vditor-content {
+  overflow: auto !important;
+}
+
+/* 彻底禁用 Vditor 原生 tooltip（用 JS 全局 tooltip 替代） */
 .vditor-toolbar .vditor-tooltipped::before,
-.vditor-toolbar .vditor-tooltipped::after {
+.vditor-toolbar .vditor-tooltipped:hover::before,
+.vditor-toolbar .vditor-tooltipped::after,
+.vditor-toolbar .vditor-tooltipped:hover::after {
   display: none !important;
+  content: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 `;
 
@@ -49,6 +53,8 @@ interface GlobalTooltip {
   text: string;
   x: number;
   y: number;
+  /** tooltip 相对自身的水平锚点：'left' = tooltip 左边界对齐 x，'center' = 居中对齐 x */
+  anchor: 'left' | 'center' | 'right';
 }
 
 // 用户设置接口
@@ -123,7 +129,8 @@ function App() {
     visible: false,
     text: '',
     x: 0,
-    y: 0
+    y: 0,
+    anchor: 'center'
   });
   const editorRef = useRef<EditorHandle>(null);
 
@@ -162,27 +169,46 @@ function App() {
   useEffect(() => {
     // 等待Vditor初始化
     const timeoutId = setTimeout(() => {
-      const toolbar = document.querySelector('.vditor-toolbar');
+      const toolbar = document.querySelector('.vditor-toolbar') as HTMLElement | null;
       if (!toolbar) return;
 
-      const handleMouseOver = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        // 查找带有aria-label的按钮元素
-        const button = target.closest('.vditor-toolbar__button') as HTMLElement;
+      const handleMouseOver = (e: Event) => {
+        const target = (e as MouseEvent).target as HTMLElement;
+        // Vditor 工具栏按钮使用 .vditor-tooltipped class 并携带 aria-label
+        const button = target.closest('.vditor-tooltipped') as HTMLElement;
         if (button && button.getAttribute('aria-label')) {
           const rect = button.getBoundingClientRect();
+          const label = button.getAttribute('aria-label') || '';
+          // 估算 tooltip 宽度（中文约 12px/字，英文约 7px/字，取中间值 + padding）
+          const estimatedWidth = label.length * 9 + 20;
+          // tooltip 显示在按钮正下方居中
+          const centerX = rect.left + rect.width / 2;
+          const tooltipY = rect.bottom + 8;
+
+          // 边界检测：居中会超出左/右边界时，自动调整对齐方式
+          let anchor: 'left' | 'center' | 'right' = 'center';
+          let tooltipX = centerX;
+          if (centerX - estimatedWidth / 2 < 8) {
+            anchor = 'left';
+            tooltipX = rect.left;
+          } else if (centerX + estimatedWidth / 2 > window.innerWidth - 8) {
+            anchor = 'right';
+            tooltipX = rect.right;
+          }
+
           setGlobalTooltip({
             visible: true,
-            text: button.getAttribute('aria-label') || '',
-            x: rect.right + 12,
-            y: rect.top + rect.height / 2
+            text: label,
+            x: tooltipX,
+            y: tooltipY,
+            anchor
           });
         }
       };
 
-      const handleMouseOut = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        const button = target.closest('.vditor-toolbar__button');
+      const handleMouseOut = (e: Event) => {
+        const target = (e as MouseEvent).target as HTMLElement;
+        const button = target.closest('.vditor-tooltipped');
         if (button) {
           setGlobalTooltip(prev => ({ ...prev, visible: false }));
         }
@@ -371,160 +397,130 @@ function App() {
     ? currentPath.split(/[/\\]/).pop()
     : '未命名.md';
 
-  // 获取导出用CSS样式 - 根据当前主题
-  const getExportStyles = (): string => {
-    const isDark = settings.theme === 'dark';
+  // 获取导出用CSS样式 - 从Vditor CDN加载对应主题的完整CSS
+  // contentTheme: classic/dark/wechat/ant-design
+  const getExportStyles = async (): Promise<string> => {
+    const contentTheme = settings.contentTheme || 'classic';
+    const codeTheme = settings.codeTheme || 'github';
+
+    // 从Vditor CDN获取内容主题CSS
+    let contentThemeCSS = '';
+    try {
+      const response = await fetch(`https://unpkg.com/vditor@3.11.2/dist/css/content-theme/${contentTheme}.css`);
+      if (response.ok) {
+        contentThemeCSS = await response.text();
+      } else {
+        console.warn(`Failed to load content theme CSS: ${contentTheme}`);
+        // 降级为内联基础样式
+        contentThemeCSS = getFallbackStyles(contentTheme === 'dark');
+      }
+    } catch (e) {
+      console.error('Error loading content theme CSS:', e);
+      contentThemeCSS = getFallbackStyles(contentTheme === 'dark');
+    }
+
+    // 从Vditor CDN获取代码高亮主题CSS
+    let codeThemeCSS = '';
+    try {
+      const response = await fetch(`https://unpkg.com/vditor@3.11.2/dist/css/code-theme/${codeTheme}.css`);
+      if (response.ok) {
+        codeThemeCSS = await response.text();
+      }
+    } catch (e) {
+      console.warn('Failed to load code theme CSS');
+    }
+
     return `
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-      
+
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
         font-size: 14px;
         line-height: 1.8;
-        color: ${isDark ? '#e0e0e0' : '#333'};
-        background: ${isDark ? '#1e1e1e' : '#ffffff'};
         padding: 40px;
         max-width: 100%;
       }
-      
-      h1 { 
-        font-size: 24px; 
-        margin: 24px 0 16px; 
-        border-bottom: 1px solid ${isDark ? '#404040' : '#eee'}; 
-        padding-bottom: 8px;
-        color: ${isDark ? '#ffffff' : '#1a1a1a'};
-      }
-      h2 { font-size: 20px; margin: 20px 0 12px; color: ${isDark ? '#e0e0e0' : '#333'}; }
-      h3 { font-size: 17px; margin: 16px 0 10px; color: ${isDark ? '#e0e0e0' : '#333'}; }
-      h4, h5, h6 { font-size: 15px; margin: 12px 0 8px; color: ${isDark ? '#e0e0e0' : '#333'}; }
-      
-      p { margin: 8px 0; }
-      
-      pre {
-        background: ${isDark ? '#252526' : '#f6f8fa'};
-        padding: 16px;
-        border-radius: 6px;
-        overflow-x: auto;
-        font-size: 13px;
+
+      /* 内容主题样式 */
+      ${contentThemeCSS}
+
+      /* 代码高亮主题样式 */
+      ${codeThemeCSS}
+
+      /* 基础样式覆盖（确保在主题样式之后） */
+      img {
+        max-width: 100%;
+        height: auto;
         margin: 12px 0;
-        border: 1px solid ${isDark ? '#404040' : '#e1e4e8'};
-        color: ${isDark ? '#e0e0e0' : '#333'};
       }
-      
-      code {
-        background: ${isDark ? '#252526' : '#f6f8fa'};
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 90%;
-        font-family: 'Consolas', 'Monaco', 'Source Code Pro', monospace;
-        color: ${isDark ? '#e0e0e0' : '#333'};
-      }
-      
-      pre code { 
-        background: transparent; 
-        padding: 0; 
-      }
-      
-      blockquote {
-        border-left: 4px solid ${isDark ? '#4a9eff' : '#0366d6'};
-        margin: 12px 0;
-        padding: 8px 16px;
-        color: ${isDark ? '#a0a0a0' : '#6a737d'};
-        background: ${isDark ? '#252526' : '#f6f8fa'};
-      }
-      
-      img { 
-        max-width: 100%; 
-        height: auto; 
-        margin: 12px 0; 
-      }
-      
+
       table {
         border-collapse: collapse;
         width: 100%;
         margin: 16px 0;
       }
-      
-      table, th, td {
-        border: 1px solid ${isDark ? '#404040' : '#dfe2e5'};
-        padding: 8px 12px;
+
+      ul, ol {
+        padding-left: 24px;
+        margin: 8px 0;
       }
-      
-      th { 
-        background: ${isDark ? '#252526' : '#f6f8fa'}; 
-        font-weight: 600; 
+
+      li {
+        margin: 4px 0;
       }
-      
-      tr:nth-child(even) {
-        background: ${isDark ? '#252526' : '#fafbfc'};
+
+      a {
+        text-decoration: none;
       }
-      
-      ul, ol { 
-        padding-left: 24px; 
-        margin: 8px 0; 
-      }
-      
-      li { margin: 4px 0; }
-      
-      hr { 
-        border: none; 
-        border-top: 1px solid ${isDark ? '#404040' : '#dfe2e5'}; 
-        margin: 24px 0; 
-      }
-      
-      a { 
-        color: ${isDark ? '#4a9eff' : '#0366d6'}; 
-        text-decoration: none; 
-      }
-      
+
       a:hover {
         text-decoration: underline;
       }
-      
-      /* 代码高亮主题 */
-      .hljs {
-        background: transparent !important;
-      }
-      
+
       /* 打印优化 */
       @media print {
         body {
           background: white !important;
-          color: #333 !important;
+          print-color-adjust: exact !important;
+          -webkit-print-color-adjust: exact !important;
         }
-        
-        h1, h2, h3, h4, h5, h6 {
-          color: #1a1a1a !important;
-        }
-        
-        pre, code {
-          background: #f6f8fa !important;
-          border-color: #e1e4e8 !important;
-          color: #333 !important;
-        }
-        
-        blockquote {
-          background: #f6f8fa !important;
-          border-left-color: #0366d6 !important;
-          color: #6a737d !important;
-        }
-        
-        table, th, td {
-          border-color: #dfe2e5 !important;
-        }
-        
-        th {
-          background: #f6f8fa !important;
-        }
-        
-        a {
-          color: #0366d6 !important;
+        @page {
+          size: A4;
+          margin: 15mm;
         }
       }
+    `;
+  };
+
+  // 降级样式（当CDN加载失败时使用）
+  const getFallbackStyles = (isDark: boolean): string => {
+    return `
+      body {
+        color: ${isDark ? '#e0e0e0' : '#333'};
+        background: ${isDark ? '#1e1e1e' : '#ffffff'};
+      }
+      h1, h2, h3, h4, h5, h6 {
+        color: ${isDark ? '#ffffff' : '#1a1a1a'};
+      }
+      h1 { border-bottom: 1px solid ${isDark ? '#404040' : '#eee'}; }
+      pre, code {
+        background: ${isDark ? '#252526' : '#f6f8fa'};
+        color: ${isDark ? '#e0e0e0' : '#333'};
+      }
+      blockquote {
+        border-left: 4px solid ${isDark ? '#4a9eff' : '#0366d6'};
+        color: ${isDark ? '#a0a0a0' : '#6a737d'};
+        background: ${isDark ? '#252526' : '#f6f8fa'};
+      }
+      a { color: ${isDark ? '#4a9eff' : '#0366d6'}; }
+      table, th, td {
+        border: 1px solid ${isDark ? '#404040' : '#dfe2e5'};
+      }
+      th { background: ${isDark ? '#252526' : '#f6f8fa'}; }
     `;
   };
 
@@ -550,7 +546,7 @@ function App() {
         // 调用后端命令导出HTML
         await invoke('export_html', {
           htmlContent,
-          cssStyles: getExportStyles(),
+          cssStyles: await getExportStyles(),
           title: defaultName,
           filePath,
         });
@@ -560,9 +556,9 @@ function App() {
       console.error('Export HTML failed:', err);
       alert('导出HTML失败: ' + err);
     }
-  }, [currentPath, settings.theme]);
+  }, [currentPath, settings.contentTheme, settings.codeTheme]);
 
-  // 导出PDF - 使用tauri-plugin-printer-v2生成PDF
+  // 导出PDF - 通过隐藏iframe触发系统打印对话框（用户选择"另存为PDF"）
   const handleExportPDF = useCallback(async () => {
     if (!editorRef.current?.isReady()) {
       alert('编辑器尚未准备好');
@@ -570,27 +566,22 @@ function App() {
     }
     
     try {
-      // 获取编辑器内容
+      // 获取编辑器HTML内容和样式
       const htmlContent = editorRef.current.getHTML();
       const defaultName = currentPath
         ? currentPath.split(/[/\\]/).pop()?.replace(/\.md$/, '') || 'document'
         : 'document';
+      const exportStyles = await getExportStyles();
 
-      // 选择保存路径
-      const filePath = await save({
-        defaultPath: `${defaultName}.pdf`,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }]
-      });
-
-      if (!filePath) return;
-
-      // 构建完整HTML
+      // 构建完整HTML（含打印样式）
       const fullHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${defaultName}</title>
   <style>
-    ${getExportStyles()}
+    ${exportStyles}
     @media print {
       @page { size: A4; margin: 15mm; }
       body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -602,71 +593,49 @@ ${htmlContent}
 </body>
 </html>`;
 
-      // 获取可用打印机列表
-      const printersStr = await getPrinters();
-      const printers = JSON.parse(printersStr);
-      
-      // 查找"Microsoft Print to PDF"虚拟打印机
-      const pdfPrinter = printers.find((p: any) => 
-        p.name && (p.name.includes('Microsoft Print to PDF') || p.name.includes('PDF'))
-      );
-      
-      if (!pdfPrinter) {
-        // 如果没有找到PDF打印机，使用默认打印机
-        console.log('No PDF printer found, available printers:', printers.map((p: any) => p.name));
-        // 回退到Vditor内置的打印方式
-        if (editorRef.current) {
-          const vditor = (editorRef.current as any).vditorRef?.current;
-          if (vditor && vditor.exportPDF) {
-            vditor.exportPDF();
-            return;
-          }
-        }
-        alert('未找到可用的PDF打印机，请确保系统已安装"Microsoft Print to PDF"虚拟打印机');
+      // 创建隐藏iframe进行打印
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '210mm';
+      iframe.style.height = '297mm';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        document.body.removeChild(iframe);
+        alert('打印初始化失败');
         return;
       }
 
-      // 使用printer插件打印HTML
-      const { printHtml } = await import('tauri-plugin-printer-v2');
-      
-      await printHtml({
-        id: 'vditor-export',
-        html: fullHtml,
-        printer: pdfPrinter.name,
-        page_size: 'A4',
-        orientation: 'portrait',
-        remove_after_print: false,
-        margin: {
-          top: 15,
-          bottom: 15,
-          left: 15,
-          right: 15,
-          unit: 'mm'
-        },
-        quality: 100,
-        grayscale: false,
-        copies: 1
-      });
+      iframeDoc.open();
+      iframeDoc.write(fullHtml);
+      iframeDoc.close();
 
-      console.log('PDF export completed via printer:', pdfPrinter.name);
-      alert('PDF已发送到打印机。请在打印机设置中选择输出到文件或使用虚拟打印机。');
+      // 等待内容加载后触发打印
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.error('Print failed:', e);
+        }
+        // 延迟移除iframe，避免打印取消时内容消失
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 2000);
+      };
+
+      console.log('PDF print dialog triggered for:', defaultName);
     } catch (err) {
       console.error('Export PDF failed:', err);
-      
-      // 回退到Vditor内置的打印方式
-      try {
-        const vditor = (editorRef.current as any).vditorRef?.current;
-        if (vditor && vditor.exportPDF) {
-          vditor.exportPDF();
-          return;
-        }
-      } catch (e) {
-        console.error('Fallback to Vditor export also failed:', e);
-      }
-      
       alert('导出PDF失败: ' + err);
     }
-  }, [currentPath, settings.theme]);
+  }, [currentPath, settings.contentTheme, settings.codeTheme]);
 
   // 监听导出事件
   useEffect(() => {
@@ -746,14 +715,18 @@ ${htmlContent}
         settings={settings}
         onSave={handleSettingsSave}
       />
-      {/* 全局Tooltip - position:fixed避免被overflow裁剪 */}
+      {/* 全局Tooltip - position:fixed，完全不受父容器 overflow 限制 */}
       {globalTooltip.visible && (
         <div
           className="vditor-global-tooltip"
           style={{
             left: globalTooltip.x,
             top: globalTooltip.y,
-            transform: 'translateY(-50%)'
+            transform: globalTooltip.anchor === 'center'
+              ? 'translateX(-50%)'
+              : globalTooltip.anchor === 'right'
+                ? 'translateX(-100%)'
+                : 'none'
           }}
         >
           {globalTooltip.text}

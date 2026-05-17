@@ -34,7 +34,9 @@
   height: 100vh;
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden;
+  /* 必须允许溢出：Vditor 工具栏子菜单(.vditor-panel)使用 position:absolute，
+     需要向上超出 .app 边界显示到标题栏区域。html/body 仍为 overflow:hidden 防止滚动条 */
+  overflow: visible;
 }
 
 /* =====================
@@ -69,6 +71,10 @@
   border-bottom: 1px solid var(--border-color);
   -webkit-app-region: drag;
   user-select: none;
+  /* 建立层叠上下文，z-index 低于 Vditor 工具栏(100)，
+     确保工具栏子菜单(.vditor-panel)向上溢出时能覆盖标题栏 */
+  position: relative;
+  z-index: 1;
 }
 
 .titlebar-title {
@@ -241,14 +247,19 @@
 .main-content {
   flex: 1;
   display: flex;
-  overflow: hidden;
+  /* 必须允许溢出：同上，Vditor 工具栏子菜单需要向上溢出到标题栏区域 */
+  overflow: visible;
+  min-height: 0; /* flex 子项必须设 min-height:0，否则 overflow:visible 时无法正确收缩 */
 }
 
 .editor-wrapper {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* 必须允许溢出：Vditor 工具栏子菜单（.vditor-panel）使用 position:absolute，
+     需要超出 editor-wrapper 边界显示。滚动由 Vditor 内部自行处理。 */
+  overflow: visible;
+  min-height: 0; /* flex 子项收缩 */
 }
 
 /* =====================
@@ -256,7 +267,9 @@
    ===================== */
 .editor-container {
   flex: 1;
-  overflow: hidden;
+  /* 必须允许溢出：同上，Vditor 工具栏子菜单需要向上/下溢出 */
+  overflow: visible;
+  min-height: 0; /* flex 子项收缩 */
 }
 
 #vditor {
@@ -268,111 +281,63 @@
 }
 
 /* =====================
-   Vditor 工具栏强制左对齐 - 使用浮动布局
+   Vditor 工具栏强制左对齐 - 使用 flex 布局
    ===================== */
 .vditor-toolbar {
   border-bottom: 1px solid var(--border-color) !important;
   background: var(--bg-secondary) !important;
-  display: block !important;
-  overflow: hidden !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
   padding: 4px 5px !important;
   line-height: 1 !important;
-}
-
-.vditor-toolbar__item {
-  float: left !important;
-}
-
-/* 清除浮动 */
-.vditor-toolbar::after {
-  content: '' !important;
-  display: block !important;
-  clear: both !important;
-}
-
-/* 确保分隔符左对齐 */
-.vditor-toolbar__br {
-  float: left !important;
-  display: inline-block !important;
-}
-
-/* =====================
-   Vditor 工具栏工具提示样式 - 完整替换原生样式
-   ===================== */
-/* 隐藏原生tooltip的:before小三角 */
-.vditor-toolbar .vditor-tooltipped::before {
-  display: none !important;
-  content: none !important;
-}
-
-/* 重写:after伪元素 */
-.vditor-toolbar .vditor-tooltipped::after {
-  display: none !important;
-  position: absolute !important;
-  z-index: 99999 !important;
-  padding: 6px 12px !important;
-  font-size: 13px !important;
-  font-weight: normal !important;
-  -webkit-font-smoothing: subpixel-antialiased !important;
-  color: #fff !important;
-  text-align: center !important;
-  text-decoration: none !important;
-  text-shadow: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  word-wrap: normal !important;
-  white-space: nowrap !important;
-  pointer-events: none !important;
-  content: attr(aria-label) !important;
-  background: rgba(0, 0, 0, 0.95) !important;
-  border-radius: 6px !important;
-  line-height: 1.4 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
-  opacity: 1 !important;
-}
-
-/* 悬停时显示tooltip - 覆盖原生hover样式 */
-.vditor-toolbar .vditor-tooltipped:hover::after {
-  display: block !important;
-  animation: none !important;
-  /* 固定在按钮下方 */
-  top: calc(100% + 8px) !important;
-  bottom: auto !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  right: auto !important;
-  margin: 0 !important;
-}
-
-@keyframes tooltip-appear {
-  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-.vditor-toolbar .vditor-tooltipped:hover::after {
-  animation: tooltip-appear 0.15s ease-out !important;
-}
-
-/* 确保工具栏不会被overflow裁剪tooltip */
-.vditor {
+  /* 关键：overflow 必须 visible，否则 position:fixed tooltip 也会被裁剪（某些浏览器行为） */
   overflow: visible !important;
-}
-
-.vditor-toolbar {
-  overflow: visible !important;
+  /* 用 position:relative + z-index 建立层叠上下文 */
   position: relative !important;
   z-index: 100 !important;
 }
 
+.vditor-toolbar__item {
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* 确保分隔符参与 flex 布局 */
 .vditor-toolbar__br {
+  display: inline-block !important;
   overflow: visible !important;
 }
 
-.vditor-content {
+/* =====================
+   Vditor 原生 tooltip 完全禁用（改用 JS 全局 tooltip）
+   ===================== */
+/* 彻底隐藏 Vditor 原生 tooltip 的 ::before（小三角）和 ::after（文字气泡） */
+.vditor-toolbar .vditor-tooltipped::before,
+.vditor-toolbar .vditor-tooltipped:hover::before {
+  display: none !important;
+  content: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+.vditor-toolbar .vditor-tooltipped::after,
+.vditor-toolbar .vditor-tooltipped:hover::after {
+  display: none !important;
+  content: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* 确保 vditor 容器不裁剪工具栏子菜单 */
+.vditor {
   overflow: visible !important;
 }
 
+/* 编辑器内容区需要可滚动，不能 visible */
 .vditor-content {
+  overflow: auto !important;
   background: var(--bg-primary) !important;
 }
 
@@ -477,12 +442,12 @@
 }
 
 /* =====================
-   Vditor 全局Tooltip (position:fixed避免被裁剪)
+   Vditor 全局Tooltip (position:fixed，完全脱离文档流，不受任何 overflow 限制)
    ===================== */
 .vditor-global-tooltip {
   position: fixed;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.9);
+  padding: 5px 10px;
+  background: rgba(0, 0, 0, 0.88);
   color: #fff;
   font-size: 12px;
   white-space: nowrap;
@@ -492,15 +457,15 @@
   pointer-events: none;
 }
 
-/* 箭头 */
+/* 上方小三角（tooltip 在按钮下方显示） */
 .vditor-global-tooltip::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: -6px;
-  transform: translateY(-50%);
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   border: 5px solid transparent;
-  border-right-color: rgba(0, 0, 0, 0.9);
+  border-bottom-color: rgba(0, 0, 0, 0.88);
 }
 
 /* 暗色主题 */
@@ -510,5 +475,5 @@
 }
 
 [data-theme="dark"] .vditor-global-tooltip::before {
-  border-right-color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.95);
 }
